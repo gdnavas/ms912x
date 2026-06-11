@@ -276,6 +276,8 @@ static int ms912x_usb_probe(struct usb_interface *interface,
 	if (ret)
 		goto err_free_request_1;
 
+	drm_client_setup_with_fourcc(dev, DRM_FORMAT_XRGB8888);
+
 	return 0;
 
 err_free_request_1:
