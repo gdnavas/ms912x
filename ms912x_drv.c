@@ -8,6 +8,7 @@
 #include <drm/drm_drv.h>
 #include <drm/drm_fb_helper.h>
 #include <drm/drm_fbdev_ttm.h>
+#include <drm/clients/drm_client_setup.h>
 #include <drm/drm_file.h>
 #include <drm/drm_gem_atomic_helper.h>
 #include <drm/drm_gem_framebuffer_helper.h>
@@ -59,11 +60,11 @@ static const struct drm_driver driver = {
 	/* GEM hooks */
 	.fops = &ms912x_driver_fops,
 	DRM_GEM_SHMEM_DRIVER_OPS,
+	DRM_FBDEV_TTM_DRIVER_OPS,
 	.gem_prime_import = ms912x_driver_gem_prime_import,
 
 	.name = DRIVER_NAME,
 	.desc = DRIVER_DESC,
-	.date = DRIVER_DATE,
 	.major = DRIVER_MAJOR,
 	.minor = DRIVER_MINOR,
 	.patchlevel = DRIVER_PATCHLEVEL,
@@ -274,8 +275,6 @@ static int ms912x_usb_probe(struct usb_interface *interface,
 	ret = drm_dev_register(dev, 0);
 	if (ret)
 		goto err_free_request_1;
-
-	drm_fbdev_ttm_setup(dev, 0);
 
 	return 0;
 

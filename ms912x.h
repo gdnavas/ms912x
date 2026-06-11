@@ -13,7 +13,6 @@
 
 #define DRIVER_NAME "ms912x"
 #define DRIVER_DESC "MacroSilicon USB to VGA/HDMI"
-#define DRIVER_DATE "20220101"
 
 #define DRIVER_MAJOR 0
 #define DRIVER_MINOR 0
