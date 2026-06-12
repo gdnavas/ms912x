@@ -11,13 +11,12 @@ Linux kernel driver for MacroSilicon USB to VGA/HDMI display adapters.
 
 ## Kernel Compatibility
 
-| Kernel Version | Branch         | Notes                                          |
-|----------------|----------------|------------------------------------------------|
-| 6.1            | `kernel-6.1`   | Older kernel, separate branch                  |
-| 6.11           | `main`         | Works out of the box                           |
-| 6.13+          | `main`         | Timer API and fbdev API changes handled        |
-| 6.17           | `main`         | Tested on Ubuntu (6.17.0-29-generic)           |
-| 7.0+           | `main`         | Compatible — `drm_client_setup_with_fourcc` still available |
+| Kernel Version | Notes                                          |
+|----------------|------------------------------------------------|
+| 6.11           | Works out of the box                           |
+| 6.13+          | Timer API and fbdev API changes handled        |
+| 6.17           | Tested on Ubuntu (6.17.0-29-generic)           |
+| 7.0+           | Compatible — `drm_client_setup_with_fourcc` still available |
 
 ## Prerequisites
 
