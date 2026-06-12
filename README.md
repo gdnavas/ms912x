@@ -16,7 +16,7 @@ Linux kernel driver for MacroSilicon USB to VGA/HDMI display adapters.
 | 6.11           | Works out of the box                           |
 | 6.13+          | Timer API and fbdev API changes handled        |
 | 6.17           | Tested on Ubuntu (6.17.0-29-generic)           |
-| 7.0+           | Compatible — `drm_client_setup_with_fourcc` still available |
+| 7.0+           | Compatible — uses full atomic helpers (`drm_universal_plane_init`, `drm_crtc_init_with_planes`, `drm_encoder_init`) |
 
 ## Prerequisites
 
@@ -142,7 +142,9 @@ This is a known limitation of the Xorg modesetting driver with USB display adapt
 
 ### Display output garbled after compositor takeover
 
-The USB display adapter requires `set_resolution` to be called after every `power_on`. Previously, `pipe_enable` only called `set_resolution` when `mode_changed=true`, which caused the display to show garbage (green dots or frozen SDDM frame) when a compositor like Hyprland took over from SDDM. Fixed by always calling `set_resolution` in `pipe_enable`.
+The driver uses full DRM atomic helpers (plane/CRTC/encoder) instead of the deprecated `drm_simple_display_pipe` helper. This ensures that when a Wayland compositor like Hyprland takes over from SDDM, atomic plane updates (`atomic_update`) are properly dispatched — which was not the case with `drm_simple_display_pipe` due to its internal state management conflicting with the compositor's atomic commits.
+
+The `drm_client_setup_with_fourcc` call provides fbdev emulation for the console/early boot (e.g. SDDM login screen).
 
 ## Development
 

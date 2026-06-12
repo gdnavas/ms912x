@@ -12,3 +12,4 @@ modules.order
 .project
 .settings
 .cache.mk
+build.sh
