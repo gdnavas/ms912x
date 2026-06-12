@@ -38,21 +38,36 @@ sudo pacman -S base-devel linux-headers dkms
 
 ## Installation
 
-### Option 1: DKMS (recommended)
+### Step 1: Install dependencies
 
-DKMS will automatically rebuild the module when you upgrade your kernel.
+On Debian/Ubuntu:
+
+```bash
+sudo apt install build-essential linux-headers-$(uname -r) dkms git
+```
+
+On Arch Linux:
+
+```bash
+sudo pacman -S base-devel linux-headers dkms git
+```
+
+### Step 2: Clone the repository
+
+```bash
+git clone https://github.com/gdnavas/ms912x.git
+cd ms912x
+```
+
+### Step 3: Build and install the module
+
+**Option A: DKMS (recommended)** — automatically rebuilds the module on kernel upgrades:
 
 ```bash
 sudo dkms install .
 ```
 
-To remove later:
-
-```bash
-sudo dkms remove ms912x/0.1 --all
-```
-
-### Option 2: Manual build and load
+**Option B: Manual build and load:**
 
 ```bash
 make
@@ -65,18 +80,33 @@ Or use the provided script:
 ./insmod.sh
 ```
 
-### Auto-load on boot
+### Step 4: Auto-load on boot (optional)
 
-To load the module automatically at boot, copy the config file:
+To load the module automatically at every boot:
 
 ```bash
-sudo cp ms912x.conf /etc/modules-load.d/
+echo ms912x | sudo tee /etc/modules-load.d/ms912x.conf
 ```
 
-Or create the file manually:
+### Step 5: Verify the driver is working
 
+```bash
+lsmod | grep ms912x
+sudo modetest -M ms912x
 ```
-ms912x
+
+### Uninstall
+
+If installed via DKMS:
+
+```bash
+sudo dkms remove ms912x/0.1 --all
+```
+
+If loaded manually:
+
+```bash
+sudo rmmod ms912x
 ```
 
 ## Verifying the Driver
