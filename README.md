@@ -140,6 +140,10 @@ This is a known limitation of the Xorg modesetting driver with USB display adapt
 
 **Workaround:** Use a Wayland compositor (e.g., GNOME on Wayland, Sway, KDE Plasma Wayland) instead of X11. Wayland handles multi-GPU output differently and does not rely on PRIME shared pixmaps.
 
+### Display output garbled after compositor takeover
+
+The USB display adapter requires `set_resolution` to be called after every `power_on`. Previously, `pipe_enable` only called `set_resolution` when `mode_changed=true`, which caused the display to show garbage (green dots or frozen SDDM frame) when a compositor like Hyprland took over from SDDM. Fixed by always calling `set_resolution` in `pipe_enable`.
+
 ## Development
 
 Driver is developed by analyzing USB traffic captures (via Wireshark) from the device. Reverse engineering notes, register dumps, and resolution data are in the `re_notes/` directory.

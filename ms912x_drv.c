@@ -127,12 +127,18 @@ static void ms912x_pipe_enable(struct drm_simple_display_pipe *pipe,
 {
 	struct ms912x_device *ms912x = to_ms912x(pipe->crtc.dev);
 	struct drm_display_mode *mode = &crtc_state->mode;
+	const struct ms912x_mode *m;
 
 	ms912x_power_on(ms912x);
 
-	if (crtc_state->mode_changed) {
-		ms912x_set_resolution(ms912x, ms912x_get_mode(mode));
+	m = ms912x_get_mode(mode);
+	if (IS_ERR(m)) {
+		pr_err("ms912x: no matching mode for %dx%d@%d\n",
+		       mode->hdisplay, mode->vdisplay,
+		       drm_mode_vrefresh(mode));
+		return;
 	}
+	ms912x_set_resolution(ms912x, m);
 }
 
 static void ms912x_pipe_disable(struct drm_simple_display_pipe *pipe)
