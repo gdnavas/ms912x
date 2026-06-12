@@ -1,25 +1,119 @@
 # ms912x driver for Linux
 
-Linux kernel driver for MacroSilicon USB to VGA/HDMI adapter.
+Linux kernel driver for MacroSilicon USB to VGA/HDMI display adapters.
 
-There are two variants:
- - VID/PID is 534d:6021. Device is USB 2
- - VID/PID is 345f:9132. Device is USB 3
+## Supported Hardware
 
-For kernel 6.1 checkout branch kernel-6.1
+| VID:PID    | Interface | Notes         |
+|------------|-----------|---------------|
+| `534d:6021` | USB 2.0   | Most common   |
+| `345f:9132` | USB 3.0   |               |
 
-TODOs:
+## Kernel Compatibility
 
-- Detect connector type (VGA, HDMI, etc...)
-- More resolutions
-- Error handling
-- Is RGB to YUV conversion needed?
+| Kernel Version | Branch         | Notes                                    |
+|----------------|----------------|------------------------------------------|
+| 6.1            | `kernel-6.1`   | Older kernel, separate branch            |
+| 6.11           | `main`         | Works out of the box                     |
+| 6.13+          | `main`         | Timer API and fbdev API changes handled  |
+| 6.17           | `main`         | Tested on Ubuntu (6.17.0-29-generic)     |
 
-## Development 
+## Prerequisites
 
-Driver is written by analyzing wireshark captures of the device.
+- Linux kernel headers matching your running kernel
+- `make`, `gcc` (or `clang`)
+- `dkms` (optional, for automatic rebuild on kernel upgrades)
 
-## DKMS
+On Debian/Ubuntu:
 
-Run `sudo dkms install .`
+```bash
+sudo apt install build-essential linux-headers-$(uname -r) dkms
+```
 
+On Arch Linux:
+
+```bash
+sudo pacman -S base-devel linux-headers dkms
+```
+
+## Installation
+
+### Option 1: DKMS (recommended)
+
+DKMS will automatically rebuild the module when you upgrade your kernel.
+
+```bash
+sudo dkms install .
+```
+
+To remove later:
+
+```bash
+sudo dkms remove ms912x/0.1 --all
+```
+
+### Option 2: Manual build and load
+
+```bash
+make
+sudo insmod ms912x.ko
+```
+
+Or use the provided script:
+
+```bash
+./insmod.sh
+```
+
+### Auto-load on boot
+
+To load the module automatically at boot, copy the config file:
+
+```bash
+sudo cp ms912x.conf /etc/modules-load.d/
+```
+
+Or create the file manually:
+
+```
+ms912x
+```
+
+## Verifying the Driver
+
+After loading the module, check that the device is detected:
+
+```bash
+lsmod | grep ms912x
+dmesg | tail -20
+```
+
+Check the display connector:
+
+```bash
+cat /sys/class/drm/card*-HDMI-A-*/status
+```
+
+Test mode setting:
+
+```bash
+modetest -M ms912x
+```
+
+## Known Limitations
+
+### X11 PRIME does not work
+
+On systems with an integrated GPU (Intel/AMD) as the primary display, the USB adapter is treated as a secondary GPU. Xorg attempts to create a PRIME shared pixmap to share the framebuffer between GPUs, but this fails with `ENOSPC` ("No space left on device") because the USB host controller's 32-bit DMA mask cannot map shmem pages allocated above 4GB.
+
+This is a known limitation of the Xorg modesetting driver with USB display adapters — it affects all USB display solutions (ms912x, DisplayLink/udl, etc.), not just this driver.
+
+**Workaround:** Use a Wayland compositor (e.g., GNOME on Wayland, Sway, KDE Plasma Wayland) instead of X11. Wayland handles multi-GPU output differently and does not rely on PRIME shared pixmaps.
+
+## Development
+
+Driver is developed by analyzing USB traffic captures (via Wireshark) from the device. Reverse engineering notes, register dumps, and resolution data are in the `re_notes/` directory.
+
+## License
+
+GPL-2.0 — see [LICENSE](LICENSE).
