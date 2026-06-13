@@ -5,7 +5,6 @@
 #include <drm/drm_atomic.h>
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_crtc_helper.h>
-#include <drm/drm_damage_helper.h>
 #include <drm/drm_drv.h>
 #include <drm/drm_fb_helper.h>
 #include <drm/drm_fbdev_ttm.h>
@@ -18,6 +17,7 @@
 #include <drm/drm_modeset_helper_vtables.h>
 #include <drm/drm_probe_helper.h>
 #include <drm/drm_print.h>
+#include <drm/drm_vblank.h>
 
 #include "ms912x.h"
 
@@ -52,10 +52,31 @@ ms912x_driver_gem_prime_import(struct drm_device *dev, struct dma_buf *dma_buf)
 	return drm_gem_prime_import_dev(dev, dma_buf, ms912x->dmadev);
 }
 
-DEFINE_DRM_GEM_FOPS(ms912x_driver_fops);
+static int ms912x_driver_open(struct inode *inode, struct file *filp)
+{
+	int ret;
+
+	pr_err("ms912x: device opened, minor=%d\n", iminor(inode));
+	ret = drm_open(inode, filp);
+	if (ret)
+		pr_err("ms912x: drm_open failed with %d\n", ret);
+	return ret;
+}
+
+static const struct file_operations ms912x_driver_fops = {
+	.owner = THIS_MODULE,
+	.open = ms912x_driver_open,
+	.release = drm_release,
+	.unlocked_ioctl = drm_ioctl,
+	.mmap = drm_gem_mmap,
+	.poll = drm_poll,
+	.read = drm_read,
+	.compat_ioctl = drm_compat_ioctl,
+	.fop_flags = FOP_UNSIGNED_OFFSET,
+};
 
 static const struct drm_driver driver = {
-	.driver_features = DRIVER_ATOMIC | DRIVER_GEM | DRIVER_MODESET,
+	.driver_features = DRIVER_ATOMIC | DRIVER_GEM | DRIVER_MODESET | DRIVER_RENDER,
 
 	/* GEM hooks */
 	.fops = &ms912x_driver_fops,
@@ -127,11 +148,19 @@ ms912x_mode_valid(struct drm_device *dev,
 	return MODE_OK;
 }
 
+static int ms912x_atomic_commit(struct drm_device *dev,
+				struct drm_atomic_state *state,
+				bool nonblock)
+{
+	pr_err("ms912x: atomic_commit nonblock=%d\n", nonblock);
+	return drm_atomic_helper_commit(dev, state, nonblock);
+}
+
 static const struct drm_mode_config_funcs ms912x_mode_config_funcs = {
 	.fb_create = drm_gem_fb_create_with_dirty,
 	.mode_valid = ms912x_mode_valid,
 	.atomic_check = drm_atomic_helper_check,
-	.atomic_commit = drm_atomic_helper_commit,
+	.atomic_commit = ms912x_atomic_commit,
 };
 
 static void ms912x_crtc_enable(struct drm_crtc *crtc,
@@ -141,6 +170,9 @@ static void ms912x_crtc_enable(struct drm_crtc *crtc,
 	struct drm_crtc_state *crtc_state = drm_atomic_get_new_crtc_state(state, crtc);
 	struct drm_display_mode *mode = &crtc_state->mode;
 	const struct ms912x_mode *m;
+
+	pr_err("ms912x: crtc_enable %dx%d@%d\n",
+	       mode->hdisplay, mode->vdisplay, drm_mode_vrefresh(mode));
 
 	ms912x_power_on(ms912x);
 
@@ -159,22 +191,15 @@ static void ms912x_crtc_disable(struct drm_crtc *crtc,
 {
 	struct ms912x_device *ms912x = to_ms912x(crtc->dev);
 
+	pr_err("ms912x: crtc_disable\n");
 	ms912x_power_off(ms912x);
 }
 
 static int ms912x_plane_check(struct drm_plane *plane,
 			      struct drm_atomic_state *state)
 {
+	pr_err("ms912x: plane_check\n");
 	return 0;
-}
-
-static void ms912x_merge_rects(struct drm_rect *dest, struct drm_rect *r1,
-			       struct drm_rect *r2)
-{
-	dest->x1 = min(r1->x1, r2->x1);
-	dest->y1 = min(r1->y1, r2->y1);
-	dest->x2 = max(r1->x2, r2->x2);
-	dest->y2 = max(r1->y2, r2->y2);
 }
 
 static void ms912x_plane_update(struct drm_plane *plane,
@@ -184,35 +209,19 @@ static void ms912x_plane_update(struct drm_plane *plane,
 	struct drm_shadow_plane_state *shadow_plane_state =
 		to_drm_shadow_plane_state(plane_state);
 	struct drm_framebuffer *fb = plane_state->fb;
-	struct drm_plane_state *old_plane_state = drm_atomic_get_old_plane_state(state, plane);
-	struct drm_atomic_helper_damage_iter iter;
-	struct drm_rect damage;
-	struct drm_rect current_rect, rect;
+	struct drm_rect rect;
 	struct ms912x_device *ms912x;
-	bool has_damage;
 
 	if (!fb)
 		return;
 
 	ms912x = to_ms912x(fb->dev);
 
-	drm_atomic_helper_damage_iter_init(&iter, old_plane_state, plane_state);
-	drm_atomic_for_each_plane_damage(&iter, &damage) {
-		has_damage = true;
-		current_rect = damage;
-		break;
-	}
+	pr_err("ms912x: plane_update %dx%d pitch=%d\n",
+	       fb->width, fb->height, fb->pitches[0]);
 
-	if (!has_damage)
-		return;
-
-	ms912x_merge_rects(&rect, &current_rect, &ms912x->update_rect);
-	if (ms912x_fb_send_rect(fb, &shadow_plane_state->data[0], &rect)) {
-		ms912x_merge_rects(&ms912x->update_rect,
-				   &ms912x->update_rect, &rect);
-	} else {
-		ms912x->update_rect = current_rect;
-	}
+	drm_rect_init(&rect, 0, 0, fb->width, fb->height);
+	ms912x_fb_send_rect(fb, &shadow_plane_state->data[0], &rect);
 }
 
 static const struct drm_plane_funcs ms912x_plane_funcs = {
@@ -281,6 +290,10 @@ static int ms912x_usb_probe(struct usb_interface *interface,
 	dev->mode_config.max_height = 2048;
 	dev->mode_config.funcs = &ms912x_mode_config_funcs;
 
+	ret = drm_vblank_init(dev, 1);
+	if (ret)
+		goto err_put_device;
+
 	/* This stops weird behavior in the device */
 	ms912x_set_resolution(ms912x, &ms912x_mode_list[0]);
 
@@ -330,7 +343,14 @@ static int ms912x_usb_probe(struct usb_interface *interface,
 	if (ret)
 		goto err_free_request_1;
 
+	ms912x->primary_plane.possible_crtcs = drm_crtc_mask(&ms912x->crtc);
+	pr_err("ms912x: plane possible_crtcs=0x%lx crtc_mask=0x%lx\n",
+	       ms912x->primary_plane.possible_crtcs,
+	       drm_crtc_mask(&ms912x->crtc));
+
 	drm_mode_config_reset(dev);
+	pr_err("ms912x: after reset plane possible_crtcs=0x%lx\n",
+	       ms912x->primary_plane.possible_crtcs);
 
 	usb_set_intfdata(interface, ms912x);
 

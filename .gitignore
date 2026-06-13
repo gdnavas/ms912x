@@ -13,3 +13,7 @@ modules.order
 .settings
 .cache.mk
 build.sh
+test_open
+test_open2
+test_open3
+test_atomic
