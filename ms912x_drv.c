@@ -2,13 +2,13 @@
 
 #include <linux/module.h>
 
+#include <drm/clients/drm_client_setup.h>
 #include <drm/drm_atomic.h>
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_drv.h>
 #include <drm/drm_fb_helper.h>
-#include <drm/drm_fbdev_ttm.h>
-#include <drm/clients/drm_client_setup.h>
+#include <drm/drm_fbdev_shmem.h>
 #include <drm/drm_file.h>
 #include <drm/drm_gem_atomic_helper.h>
 #include <drm/drm_gem_framebuffer_helper.h>
@@ -52,36 +52,14 @@ ms912x_driver_gem_prime_import(struct drm_device *dev, struct dma_buf *dma_buf)
 	return drm_gem_prime_import_dev(dev, dma_buf, ms912x->dmadev);
 }
 
-static int ms912x_driver_open(struct inode *inode, struct file *filp)
-{
-	int ret;
-
-	pr_err("ms912x: device opened, minor=%d\n", iminor(inode));
-	ret = drm_open(inode, filp);
-	if (ret)
-		pr_err("ms912x: drm_open failed with %d\n", ret);
-	return ret;
-}
-
-static const struct file_operations ms912x_driver_fops = {
-	.owner = THIS_MODULE,
-	.open = ms912x_driver_open,
-	.release = drm_release,
-	.unlocked_ioctl = drm_ioctl,
-	.mmap = drm_gem_mmap,
-	.poll = drm_poll,
-	.read = drm_read,
-	.compat_ioctl = drm_compat_ioctl,
-	.fop_flags = FOP_UNSIGNED_OFFSET,
-};
+DEFINE_DRM_GEM_FOPS(ms912x_driver_fops);
 
 static const struct drm_driver driver = {
 	.driver_features = DRIVER_ATOMIC | DRIVER_GEM | DRIVER_MODESET | DRIVER_RENDER,
 
-	/* GEM hooks */
 	.fops = &ms912x_driver_fops,
 	DRM_GEM_SHMEM_DRIVER_OPS,
-	DRM_FBDEV_TTM_DRIVER_OPS,
+	DRM_FBDEV_SHMEM_DRIVER_OPS,
 	.gem_prime_import = ms912x_driver_gem_prime_import,
 
 	.name = DRIVER_NAME,
@@ -93,30 +71,25 @@ static const struct drm_driver driver = {
 
 static const struct ms912x_mode ms912x_mode_list[] = {
 	/* Found in captures of the Windows driver */
-	MS912X_MODE( 800,  600, 60, 0x4200, MS912X_PIXFMT_UYVY),
-	MS912X_MODE(1024,  768, 60, 0x4700, MS912X_PIXFMT_UYVY),
-	MS912X_MODE(1152,  864, 60, 0x4c00, MS912X_PIXFMT_UYVY),
-	MS912X_MODE(1280,  720, 60, 0x4f00, MS912X_PIXFMT_UYVY),
-	MS912X_MODE(1280,  800, 60, 0x5700, MS912X_PIXFMT_UYVY),
-	MS912X_MODE(1280,  960, 60, 0x5b00, MS912X_PIXFMT_UYVY),
-	MS912X_MODE(1280, 1024, 60, 0x6000, MS912X_PIXFMT_UYVY),
-	MS912X_MODE(1366,  768, 60, 0x6600, MS912X_PIXFMT_UYVY),
-	MS912X_MODE(1400, 1050, 60, 0x6700, MS912X_PIXFMT_UYVY),
-	MS912X_MODE(1440,  900, 60, 0x6b00, MS912X_PIXFMT_UYVY),
-	MS912X_MODE(1680, 1050, 60, 0x7800, MS912X_PIXFMT_UYVY),
-	MS912X_MODE(1920, 1080, 60, 0x8100, MS912X_PIXFMT_UYVY),
-
-	/* Dumped from the device */
-	MS912X_MODE( 720,  480, 60, 0x0200, MS912X_PIXFMT_UYVY),
-	MS912X_MODE( 720,  576, 60, 0x1100, MS912X_PIXFMT_UYVY),
-	MS912X_MODE( 640,  480, 60, 0x4000, MS912X_PIXFMT_UYVY),
-	MS912X_MODE(1024,  768, 60, 0x4900, MS912X_PIXFMT_UYVY),
-	MS912X_MODE(1280,  600, 60, 0x4e00, MS912X_PIXFMT_UYVY),
-	MS912X_MODE(1280,  768, 60, 0x5400, MS912X_PIXFMT_UYVY),
-	MS912X_MODE(1280, 1024, 60, 0x6100, MS912X_PIXFMT_UYVY),
-	MS912X_MODE(1360,  768, 60, 0x6400, MS912X_PIXFMT_UYVY),
-	MS912X_MODE(1600, 1200, 60, 0x7300, MS912X_PIXFMT_UYVY),
-	/* TODO: more mode numbers? */
+	MS912X_MODE( 640,  480, 60, 0x40, MS912X_PIXFMT_UYVY),
+	MS912X_MODE( 720,  480, 60, 0x02, MS912X_PIXFMT_UYVY),
+	MS912X_MODE( 720,  576, 60, 0x11, MS912X_PIXFMT_UYVY),
+	MS912X_MODE( 800,  600, 60, 0x42, MS912X_PIXFMT_UYVY),
+	MS912X_MODE(1024,  768, 60, 0x47, MS912X_PIXFMT_UYVY),
+	MS912X_MODE(1152,  864, 60, 0x4c, MS912X_PIXFMT_UYVY),
+	MS912X_MODE(1280,  600, 60, 0x4e, MS912X_PIXFMT_UYVY),
+	MS912X_MODE(1280,  720, 60, 0x4f, MS912X_PIXFMT_UYVY),
+	MS912X_MODE(1280,  768, 60, 0x54, MS912X_PIXFMT_UYVY),
+	MS912X_MODE(1280,  800, 60, 0x57, MS912X_PIXFMT_UYVY),
+	MS912X_MODE(1280,  960, 60, 0x5b, MS912X_PIXFMT_UYVY),
+	MS912X_MODE(1280, 1024, 60, 0x60, MS912X_PIXFMT_UYVY),
+	MS912X_MODE(1360,  768, 60, 0x64, MS912X_PIXFMT_UYVY),
+	MS912X_MODE(1366,  768, 60, 0x66, MS912X_PIXFMT_UYVY),
+	MS912X_MODE(1400, 1050, 60, 0x67, MS912X_PIXFMT_UYVY),
+	MS912X_MODE(1440,  900, 60, 0x6b, MS912X_PIXFMT_UYVY),
+	MS912X_MODE(1600, 1200, 60, 0x73, MS912X_PIXFMT_UYVY),
+	MS912X_MODE(1680, 1050, 60, 0x78, MS912X_PIXFMT_UYVY),
+	MS912X_MODE(1920, 1080, 60, 0x81, MS912X_PIXFMT_UYVY),
 };
 
 static const struct ms912x_mode *
@@ -126,6 +99,7 @@ ms912x_get_mode(const struct drm_display_mode *mode)
 	int width = mode->hdisplay;
 	int height = mode->vdisplay;
 	int hz = drm_mode_vrefresh(mode);
+
 	for (i = 0; i < ARRAY_SIZE(ms912x_mode_list); i++) {
 		if (ms912x_mode_list[i].width == width &&
 		    ms912x_mode_list[i].height == height &&
@@ -133,92 +107,101 @@ ms912x_get_mode(const struct drm_display_mode *mode)
 			return &ms912x_mode_list[i];
 		}
 	}
-	return ERR_PTR(-EINVAL);
-}
-
-static enum drm_mode_status
-ms912x_mode_valid(struct drm_device *dev,
-		  const struct drm_display_mode *mode)
-{
-	const struct ms912x_mode *m = ms912x_get_mode(mode);
-
-	if (IS_ERR(m))
-		return MODE_BAD;
-
-	return MODE_OK;
-}
-
-static int ms912x_atomic_commit(struct drm_device *dev,
-				struct drm_atomic_state *state,
-				bool nonblock)
-{
-	pr_err("ms912x: atomic_commit nonblock=%d\n", nonblock);
-	return drm_atomic_helper_commit(dev, state, nonblock);
+	return NULL;
 }
 
 static const struct drm_mode_config_funcs ms912x_mode_config_funcs = {
 	.fb_create = drm_gem_fb_create_with_dirty,
-	.mode_valid = ms912x_mode_valid,
 	.atomic_check = drm_atomic_helper_check,
-	.atomic_commit = ms912x_atomic_commit,
+	.atomic_commit = drm_atomic_helper_commit,
 };
 
-static void ms912x_crtc_enable(struct drm_crtc *crtc,
-			       struct drm_atomic_state *state)
+static const struct drm_mode_config_helper_funcs
+ms912x_mode_config_helper_funcs = {
+	.atomic_commit_tail = drm_atomic_helper_commit_tail_rpm,
+};
+
+static void ms912x_crtc_atomic_enable(struct drm_crtc *crtc,
+				      struct drm_atomic_commit *state)
 {
-	struct ms912x_device *ms912x = to_ms912x(crtc->dev);
-	struct drm_crtc_state *crtc_state = drm_atomic_get_new_crtc_state(state, crtc);
-	struct drm_display_mode *mode = &crtc_state->mode;
+	struct drm_crtc_state *crtc_state =
+		drm_atomic_get_new_crtc_state(state, crtc);
+	struct drm_device *dev = crtc->dev;
+	struct ms912x_device *ms912x = to_ms912x(dev);
 	const struct ms912x_mode *m;
+	int ret;
 
-	pr_err("ms912x: crtc_enable %dx%d@%d\n",
-	       mode->hdisplay, mode->vdisplay, drm_mode_vrefresh(mode));
-
-	ms912x_power_on(ms912x);
-
-	m = ms912x_get_mode(mode);
-	if (IS_ERR(m)) {
-		pr_err("ms912x: no matching mode for %dx%d@%d\n",
-		       mode->hdisplay, mode->vdisplay,
-		       drm_mode_vrefresh(mode));
+	ret = ms912x_power_on(ms912x);
+	if (ret) {
+		drm_err(dev, "failed to power on display: %d\n", ret);
 		return;
 	}
-	ms912x_set_resolution(ms912x, m);
+
+	m = ms912x_get_mode(&crtc_state->mode);
+	if (!m) {
+		drm_err(dev, "unsupported mode passed to CRTC enable\n");
+		return;
+	}
+
+	ret = ms912x_set_resolution(ms912x, m);
+	if (ret)
+		drm_err(dev, "failed to set display mode: %d\n", ret);
 }
 
-static void ms912x_crtc_disable(struct drm_crtc *crtc,
-				struct drm_atomic_state *state)
+static void ms912x_cancel_transfer_work(struct ms912x_device *ms912x)
 {
-	struct ms912x_device *ms912x = to_ms912x(crtc->dev);
+	unsigned int i;
 
-	pr_err("ms912x: crtc_disable\n");
-	ms912x_power_off(ms912x);
+	for (i = 0; i < ARRAY_SIZE(ms912x->requests); i++) {
+		struct ms912x_usb_request *request = &ms912x->requests[i];
+
+		if (cancel_work_sync(&request->work))
+			complete(&request->done);
+	}
 }
 
-static int ms912x_plane_check(struct drm_plane *plane,
-			      struct drm_atomic_state *state)
+static void ms912x_crtc_atomic_disable(struct drm_crtc *crtc,
+				       struct drm_atomic_commit *state)
 {
-	pr_err("ms912x: plane_check\n");
-	return 0;
+	struct drm_device *dev = crtc->dev;
+	struct ms912x_device *ms912x = to_ms912x(dev);
+	int ret;
+
+	ms912x_cancel_transfer_work(ms912x);
+	ret = ms912x_power_off(ms912x);
+	if (ret && ret != -ENODEV)
+		drm_err(dev, "failed to power off display: %d\n", ret);
 }
 
-static void ms912x_plane_update(struct drm_plane *plane,
-				struct drm_atomic_state *state)
+static int ms912x_plane_atomic_check(struct drm_plane *plane,
+				     struct drm_atomic_commit *state)
 {
-	struct drm_plane_state *plane_state = drm_atomic_get_new_plane_state(state, plane);
+	struct drm_plane_state *new_plane_state =
+		drm_atomic_get_new_plane_state(state, plane);
+	struct drm_crtc_state *crtc_state = NULL;
+
+	if (new_plane_state->crtc)
+		crtc_state = drm_atomic_get_new_crtc_state(state,
+							   new_plane_state->crtc);
+
+	return drm_atomic_helper_check_plane_state(new_plane_state, crtc_state,
+						   DRM_PLANE_NO_SCALING,
+						   DRM_PLANE_NO_SCALING,
+						   false, false);
+}
+
+static void ms912x_plane_atomic_update(struct drm_plane *plane,
+				       struct drm_atomic_commit *state)
+{
+	struct drm_plane_state *plane_state =
+		drm_atomic_get_new_plane_state(state, plane);
 	struct drm_shadow_plane_state *shadow_plane_state =
 		to_drm_shadow_plane_state(plane_state);
 	struct drm_framebuffer *fb = plane_state->fb;
 	struct drm_rect rect;
-	struct ms912x_device *ms912x;
 
 	if (!fb)
 		return;
-
-	ms912x = to_ms912x(fb->dev);
-
-	pr_err("ms912x: plane_update %dx%d pitch=%d\n",
-	       fb->width, fb->height, fb->pitches[0]);
 
 	drm_rect_init(&rect, 0, 0, fb->width, fb->height);
 	ms912x_fb_send_rect(fb, &shadow_plane_state->data[0], &rect);
@@ -233,8 +216,8 @@ static const struct drm_plane_funcs ms912x_plane_funcs = {
 
 static const struct drm_plane_helper_funcs ms912x_plane_helper_funcs = {
 	DRM_GEM_SHADOW_PLANE_HELPER_FUNCS,
-	.atomic_check = ms912x_plane_check,
-	.atomic_update = ms912x_plane_update,
+	.atomic_check = ms912x_plane_atomic_check,
+	.atomic_update = ms912x_plane_atomic_update,
 };
 
 static const struct drm_crtc_funcs ms912x_crtc_funcs = {
@@ -248,8 +231,8 @@ static const struct drm_crtc_funcs ms912x_crtc_funcs = {
 
 static const struct drm_crtc_helper_funcs ms912x_crtc_helper_funcs = {
 	.atomic_check = drm_crtc_helper_atomic_check,
-	.atomic_enable = ms912x_crtc_enable,
-	.atomic_disable = ms912x_crtc_disable,
+	.atomic_enable = ms912x_crtc_atomic_enable,
+	.atomic_disable = ms912x_crtc_atomic_disable,
 };
 
 static const struct drm_encoder_funcs ms912x_encoder_funcs = {
@@ -289,6 +272,7 @@ static int ms912x_usb_probe(struct usb_interface *interface,
 	dev->mode_config.min_height = 0;
 	dev->mode_config.max_height = 2048;
 	dev->mode_config.funcs = &ms912x_mode_config_funcs;
+	dev->mode_config.helper_private = &ms912x_mode_config_helper_funcs;
 
 	ret = drm_vblank_init(dev, 1);
 	if (ret)
@@ -344,17 +328,12 @@ static int ms912x_usb_probe(struct usb_interface *interface,
 		goto err_free_request_1;
 
 	ms912x->primary_plane.possible_crtcs = drm_crtc_mask(&ms912x->crtc);
-	pr_err("ms912x: plane possible_crtcs=0x%lx crtc_mask=0x%lx\n",
-	       ms912x->primary_plane.possible_crtcs,
-	       drm_crtc_mask(&ms912x->crtc));
 
 	drm_mode_config_reset(dev);
-	pr_err("ms912x: after reset plane possible_crtcs=0x%lx\n",
-	       ms912x->primary_plane.possible_crtcs);
 
 	usb_set_intfdata(interface, ms912x);
 
-	drm_kms_helper_poll_init(dev);
+	drmm_kms_helper_poll_init(dev);
 
 	ret = drm_dev_register(dev, 0);
 	if (ret)
@@ -378,11 +357,9 @@ static void ms912x_usb_disconnect(struct usb_interface *interface)
 	struct ms912x_device *ms912x = usb_get_intfdata(interface);
 	struct drm_device *dev = &ms912x->drm;
 
-	cancel_work_sync(&ms912x->requests[0].work);
-	cancel_work_sync(&ms912x->requests[1].work);
-	drm_kms_helper_poll_fini(dev);
 	drm_dev_unplug(dev);
 	drm_atomic_helper_shutdown(dev);
+	ms912x_cancel_transfer_work(ms912x);
 	ms912x_free_request(&ms912x->requests[0]);
 	ms912x_free_request(&ms912x->requests[1]);
 	put_device(ms912x->dmadev);
@@ -409,4 +386,5 @@ static struct usb_driver ms912x_driver = {
 	.id_table = id_table,
 };
 module_usb_driver(ms912x_driver);
+MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL");

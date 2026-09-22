@@ -3,6 +3,7 @@
 #include <drm/drm_connector.h>
 #include <drm/drm_edid.h>
 #include <drm/drm_modeset_helper_vtables.h>
+#include <drm/drm_print.h>
 #include <drm/drm_probe_helper.h>
 
 #include "ms912x.h"
@@ -47,7 +48,7 @@ static enum drm_connector_status ms912x_detect(struct drm_connector *connector,
 	struct ms912x_device *ms912x = to_ms912x(connector->dev);
 	int status = ms912x_read_byte(ms912x, 0x32);
 
-	pr_err("ms912x: detect status=%d\n", status);
+	drm_info(connector->dev, "detect status=%d\n", status);
 
 	if (status < 0)
 		return connector_status_unknown;

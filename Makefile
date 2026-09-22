@@ -9,10 +9,13 @@ obj-m := ms912x.o
 KVER ?= $(shell uname -r)
 KSRC ?= /lib/modules/$(KVER)/build
 
+# Use clang if the kernel was built with clang
+CC ?= clang
+
 all:	modules
 
 modules:
-	make CHECK="/usr/bin/sparse" -C $(KSRC) M=$(PWD) modules
+	make CC=$(CC) LD=ld.lld -C $(KSRC) M=$(PWD) modules
 
 clean:
 	make -C $(KSRC) M=$(PWD) clean
